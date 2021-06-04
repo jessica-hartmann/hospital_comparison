@@ -1,0 +1,49 @@
+---
+title: "**Assignment Week 4: Hospital comparison**"
+output: html_notebook
+---
+The data for this assignment come from the [Hospital Compare web site] (http://hospitalcompare.hhs.gov) run by the U.S. Department of Health and Human Services. The purpose of the web site is to provide data and information about the quality of care at over 4,000 Medicare-certified hospitals in the U.S. This dataset covers all major U.S. hospitals.
+
+## Plot the 30-day mortality rate for heart attack 
+
+```{r}
+outcome <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
+head(outcome)
+```
+Death mortality rates (column 11) are character, convert to numeric, then plot histogram
+```{r}
+outcome[, 11] <- as.numeric(outcome[,11])
+hist(outcome[,11])
+```
+
+```{r}
+
+best <- function(state, outcome) {
+        y <<-read.csv("outcome-of-care-measures.csv")
+        names(y)[c(11,17,23)] <- c("heart attack", "heart failure", "pneumonia")
+        if (!state %in% y[,7]) {
+            stop ("invalid state")  
+        }
+        if (!outcome %in% c("heart attack", "heart failure", "pneumonia")) {
+            stop ("invalid outcome")  
+        }
+        y1 <- y[(y$State == state),]
+        rank <- rank(y1[,outcome], ties.method = "first")
+        y1$Hospital.Name[ which (rank == 1)] 
+
+}
+
+rank <- rank(outcome[,11])
+
+best("TX", "heart failure") ##now only need to select the first in alphabet
+
+
+ 
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
