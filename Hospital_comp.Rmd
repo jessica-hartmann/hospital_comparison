@@ -16,11 +16,21 @@ outcome[, 11] <- as.numeric(outcome[,11])
 hist(outcome[,11])
 ```
 
+## Finding the best hospital in a state 
+
+
 ```{r}
 
 best <- function(state, outcome) {
-        y <<-read.csv("outcome-of-care-measures.csv")
+        y <-read.csv("outcome-of-care-measures.csv")
+        #y[ ,c(11,17,23)] <- sapply(y[ ,c(11,17,23)],suppressWarnings(as.numeric))
+        
         names(y)[c(11,17,23)] <- c("heart attack", "heart failure", "pneumonia")
+        
+        y[ ,11] <- suppressWarnings(as.numeric(y[ ,11])) 
+        y[ ,17] <- suppressWarnings(as.numeric(y[ ,17]))
+        y[ ,23] <- suppressWarnings(as.numeric(y[ ,23]))
+        
         if (!state %in% y[,7]) {
             stop ("invalid state")  
         }
@@ -28,17 +38,108 @@ best <- function(state, outcome) {
             stop ("invalid outcome")  
         }
         y1 <- y[(y$State == state),]
-        rank <- rank(y1[,outcome], ties.method = "first")
-        y1$Hospital.Name[ which (rank == 1)] 
-
+        rank <- rank(y1[,outcome], ties.method = "min", na.last = TRUE)
+        y2 <- y1$Hospital.Name[ which (rank == 1)] 
+        y2
+      
+        
 }
 
-rank <- rank(outcome[,11])
-
-best("TX", "heart failure") ##now only need to select the first in alphabet
+best("MD", "heart attack")
 
 
- 
+```
+
+## Ranking hospitals by outcome in a state 
+
+```{r}
+rankhospital <- function (state, outcome, num = "best") {
+        y <-read.csv ("outcome-of-care-measures.csv")
+        #y[ ,c(11,17,23)] <- sapply(y[ ,c(11,17,23)],suppressWarnings(as.numeric))
+        
+        names(y)[c(11,17,23)] <- c("heart attack", "heart failure", "pneumonia")
+        
+        ## coerce character columns (outcome) to numeric, suppress warning
+        y[ ,11] <- suppressWarnings(as.numeric(y[ ,11])) 
+        y[ ,17] <- suppressWarnings(as.numeric(y[ ,17]))
+        y[ ,23] <- suppressWarnings(as.numeric(y[ ,23]))
+        
+        if (!state %in% y[,7]) {
+            stop ("invalid state")  ## if passed state is invalid, throw error 
+        }
+        if (!outcome %in% c("heart attack", "heart failure", "pneumonia")) {
+            stop ("invalid outcome")  ## same as above for outcome 
+        }
+      
+        y1 <- y[(y$State == state),]        ## keep only subset of passed state 
+        y1 <- y1[!is.na(y1[outcome]),]      ## through out rows with NA for outcome
+        y1 <- y1[order(y1$Hospital.Name),]  ## order hosp names alphabetically 
+        y1$rank <- rank(y1[,outcome], ties.method = "first", na.last = TRUE)
+        
+      
+        if (num == "best") num = min(y1$rank)
+        if (num == "worst") num = max(y1$rank)
+        if (num > max(y1$rank)) return (NA)
+        
+        y2 <- y1$Hospital.Name[ which (y1$rank == num)] 
+        y2
+}
+
+
+rankhospital("MD", "heart attack", 2)
+```
+
+
+## Ranking hospitals in all states 
+This does not 
+```{r}
+library(dplyr)
+library(tidyr)
+rankall <- function (outcome, num = "best") {
+           y <- read.csv("outcome-of-care-measures.csv")
+        #y[ ,c(11,17,23)] <- sapply(y[ ,c(11,17,23)],suppressWarnings(as.numeric))
+        
+        names(y)[c(11,17,23)] <- c("heart attack", "heart failure", "pneumonia")
+        
+        y[ ,11] <- suppressWarnings(as.numeric(y[ ,11])) 
+        y[ ,17] <- suppressWarnings(as.numeric(y[ ,17]))
+        y[ ,23] <- suppressWarnings(as.numeric(y[ ,23]))
+        
+        if (!outcome %in% c("heart attack", "heart failure", "pneumonia")) {
+            stop ("invalid outcome")  
+        }
+        
+      
+         y1 <- y %>%
+          group_by(State) %>%
+          arrange(Hospital.Name, .by_group = TRUE) %>%
+          mutate (rank = row_number(.data[[outcome]])) ##using .data from rland  
+                                                      ## to pass string args from function  
+        
+        if (num == "best") num = min(y1$rank)
+        if (num == "worst") num = max(y1$rank)
+        #if (num > max(y1$rank)) return (NA) ## throws an error
+        
+        y2 <- y1 %>%
+            group_by(State)%>% 
+            #summarise (rank = nth(rank, 20), hospital = first(Hospital.Name))
+            filter(rank == num) %>%
+            ungroup() %>%
+            complete(State = y1$State)
+           
+         
+      y3 <- y2 %>% select(State, Hospital.Name)
+      return (y3)
+         
+        'y2 <- subset(y1, rank == num , select = c("Hospital.Name", "State"))
+        y2 <- y2[order(y2$State),]
+        y2'
+}
+
+
+head (rankall("heart attack", 20),10)
+tail (rankall("pneumonia", "worst"),3) ##this does not work yet 
+
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
